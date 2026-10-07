@@ -6,7 +6,7 @@ const D={key:null,data:null,tok:0,season:1,vids:[],tp:null,playing:false,muted:t
 const errorHTML=e=>`<div class="empty" style="margin-top:140px"><b>${e&&e.status===401?'TMDB rejected the key':'Couldn’t reach TMDB'}</b><p>${e&&e.status===401?'Check the key in Settings.':'Check your connection.'}</p><button class="btn pri" onclick="openSheet()">Settings</button></div>`;
 function skeleton(m){
   return `<div class="d-bg"><img class="bd" src="${img(m&&m.bd,'w1280')}" alt=""><img class="po" src="${img(m&&m.pp,'w780')}" alt=""><div class="tr"></div></div>
-  <div class="d-top"><button class="ib" data-back aria-label="Back">${ic('back')}</button><span class="tt">${esc(m?m.title:'')}</span><span class="sp"></span></div>
+  <div class="d-top"><div class="pblur" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><button class="ib" data-back aria-label="Back">${ic('back')}</button><span class="tt">${esc(m?m.title:'')}</span><span class="sp"></span></div>
   <div class="d-scroll"><div class="d-hero"><div class="d-main"><h1 class="d-title">${esc(m?m.title:'')}</h1></div></div><div class="d-body"><div class="dloading"></div></div></div>`;
 }
 async function openDetail(type,id){
@@ -19,7 +19,7 @@ async function openDetail(type,id){
   lazy();bindDetail(el);
   if(m&&m.pp)accentFor(m.pp).then(c=>{if(tok===D.tok)setTint(el,c)});
   try{
-    const d=await tmdb(`/${type}/${id}`,{append_to_response:type==='movie'?'credits,videos,images,recommendations,release_dates,watch/providers':'aggregate_credits,videos,images,recommendations,content_ratings,watch/providers',include_image_language:'en,null'});
+    const d=await tmdb(`/${type}/${id}`,{append_to_response:type==='movie'?'credits,videos,images,recommendations,release_dates,watch/providers,keywords':'aggregate_credits,videos,images,recommendations,content_ratings,watch/providers,keywords',include_image_language:'en,null'});
     if(tok!==D.tok)return;
     norm(d,type);D.data=d;paintDetail(el,d,type,tok);
   }catch(e){
@@ -109,7 +109,7 @@ function paintDetail(el,d,type,tok){
   const people=[...dirP.filter(p=>p.profile_path).slice(0,2).map(p=>person(p,movie?'Director':'Creator')),...cast.slice(0,18).map(p=>person(p,movie?p.character:(p.roles&&p.roles[0]&&p.roles[0].character)))];
   const had=!!$('.d-main',el);
   el.innerHTML=`<div class="d-bg"><img class="bd" src="${img(d.backdrop_path,'w1280')}" alt=""><img class="po" src="${img(d.poster_path,'w780')}" alt=""><div class="tr"></div></div>
-  <div class="d-top"><button class="ib" data-back aria-label="Back">${ic('back')}</button><span class="tt">${esc(title)}</span><span class="sp"></span></div>
+  <div class="d-top"><div class="pblur" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><button class="ib" data-back aria-label="Back">${ic('back')}</button><span class="tt">${esc(title)}</span><span class="sp"></span></div>
   <div class="cine-ui"><button class="ib" id="dMute" aria-label="Sound">${ic('mute')}</button><button class="ib" id="dCine" aria-label="Cinema mode">${ic('expand')}</button></div>
   <div class="d-scroll">
    <div class="d-hero"><div class="d-main ${had?'na':''}">
@@ -126,7 +126,7 @@ function paintDetail(el,d,type,tok){
     ${people.length?`<section class="dsec bleed rv"><h3>Cast</h3><div class="drail">${people.join('')}</div></section>`:''}
     ${clips.length||stills.length?`<section class="dsec bleed rv"><h3>Media</h3><div class="drail">${clips.map(v=>`<button class="shot" data-vid="${v.key}" aria-label="Play"><img src="https://i.ytimg.com/vi/${v.key}/hqdefault.jpg" alt="" loading="lazy"><span class="pl"><span>${ic('play')}</span></span></button>`).join('')}${stills.map(s=>`<div class="shot" data-shot="${s.file_path}"><img src="${img(s.file_path,'w500')}" alt="" loading="lazy"></div>`).join('')}</div></section>`:''}
     ${d.belongs_to_collection?`<section class="dsec bleed rv"><h3>${esc(d.belongs_to_collection.name)}</h3><div id="colWall"></div></section>`:''}
-    <section class="dsec bleed rv"><div class="mlh"><h3>More like this</h3><div class="tabs" style="padding:0" id="mlTabs"><button class="chip on" data-ml="sim">Similar</button><button class="chip" data-ml="genre">Same vibe</button><button class="chip" data-ml="crew">Cast &amp; crew</button></div></div><div id="mlWall"></div><div class="sentinel" id="mlSent"></div></section>
+    <section class="dsec bleed rv"><h3>More like this</h3><div class="mlbar" id="mlTabs">${mlModes(d,type).map(([id,n],i)=>`<button class="chip ${i?'':'on'}" data-ml="${id}">${n}</button>`).join('')}</div><div id="mlWall"></div><div class="sentinel" id="mlSent"></div></section>
     ${fine?`<section class="dsec rv"><p class="fine">${fine}</p></section>`:''}
    </div></div>`;
   lazy();bindDetail(el);$('.d-scroll',el).scrollTop=0;reveal(el);
@@ -136,31 +136,49 @@ function paintDetail(el,d,type,tok){
   if(d.belongs_to_collection)tmdb('/collection/'+d.belongs_to_collection.id).then(c=>{const b=$('#colWall',el);if(b&&tok===D.tok)new Wall(b).push(lst({results:c.parts},'movie').sort((a,b)=>a.date.localeCompare(b.date)),{})}).catch(()=>{});
   if(D.vids.length)setTimeout(()=>{if(tok===D.tok)startInline(el,tok)},1000);
 }
-/* ---------- more like this: three lenses, each infinite ---------- */
+/* ---------- more like this: many lenses, each infinite; the selector bar sticks ---------- */
 const ML={kill:()=>{}};
+function mlModes(d,type){
+  const movie=type==='movie',kws=((d.keywords&&(d.keywords.keywords||d.keywords.results))||[]),co=movie?(d.production_companies||[]):(d.networks||[]);
+  const m=[['sim','Similar'],['genre','Same vibe']];
+  if(kws.length)m.push(['themes','Themes']);
+  m.push(['crew','Cast & crew']);
+  if(co.length)m.push(['studio',movie?'Same studio':'Same network']);
+  m.push(['era','Same era'],['fresh','Newer'],['top','Top rated'],['gems','Hidden gems']);
+  if(d.original_language&&d.original_language!=='en')m.push(['lang','Same language']);
+  return m;
+}
 function mlStart(mode){
   ML.kill();
   const d=D.data,el=$('#detail');if(!d||!el)return;
-  $$('#mlTabs .chip',el).forEach(c=>c.classList.toggle('on',c.dataset.ml===mode));
+  const bar=$('#mlTabs',el);$$('#mlTabs .chip',el).forEach(c=>{const on=c.dataset.ml===mode;c.classList.toggle('on',on);if(on&&bar)bar.scrollTo({left:c.offsetLeft-bar.clientWidth/2+c.offsetWidth/2,behavior:'smooth'})});
   const wallEl=$('#mlWall',el),sent=$('#mlSent',el);if(!wallEl)return;
   wallEl.innerHTML='';const wall=new Wall(wallEl);
   const type=D.type,seen=new Set([D.key]),fresh=a=>a.filter(i=>!seen.has(i.key)&&seen.add(i.key));
-  const movie=type==='movie',crew=movie?(d.credits&&d.credits.crew||[]).filter(c=>c.job==='Director'):(d.created_by||[]);
+  const movie=type==='movie',year=+((d.release_date||d.first_air_date||'2000').slice(0,4)),dk=movie?'primary_release_date':'first_air_date';
+  const g1=(d.genres||[]).slice(0,1).map(g=>g.id).join(','),g2=(d.genres||[]).slice(0,2).map(g=>g.id).join(',');
+  const kws=((d.keywords&&(d.keywords.keywords||d.keywords.results))||[]).slice(0,4).map(k=>k.id).join('|');
+  const co=movie?(d.production_companies||[])[0]:(d.networks||[])[0];
+  const crew=movie?(d.credits&&d.credits.crew||[]).filter(c=>c.job==='Director'):(d.created_by||[]);
   const cast=movie?(d.credits&&d.credits.cast||[]):(d.aggregate_credits&&d.aggregate_credits.cast||[]);
   const peopleIds=[...new Set([...crew.map(c=>c.id),...cast.slice(0,3).map(c=>c.id)])].slice(0,5);
   let pool=null;
+  const dsc=async(p,params)=>{const r=await tmdb('/discover/'+type,{...params,page:p});return{items:lst(r,type),more:p<Math.min(8,r.total_pages)}};
+  const vc=movie?{a:250,b:1500}:{a:100,b:600};
   const src={
     sim:async p=>{
       const [a,b]=await Promise.all([tmdb(`/${type}/${d.id}/recommendations`,{page:p}).catch(()=>({results:[],total_pages:0})),tmdb(`/${type}/${d.id}/similar`,{page:p}).catch(()=>({results:[],total_pages:0}))]);
       const ok=x=>x&&x.poster_path&&(x.vote_count||0)>=60&&(x.vote_average||0)>=5.6;
-      const items=[...a.results.filter(ok).map(x=>norm(x,type)),...b.results.filter(ok).map(x=>norm(x,type))];
-      return{items,more:p<Math.min(6,Math.max(a.total_pages,b.total_pages))};
+      return{items:[...a.results.filter(ok).map(x=>norm(x,type)),...b.results.filter(ok).map(x=>norm(x,type))],more:p<Math.min(6,Math.max(a.total_pages,b.total_pages))};
     },
-    genre:async p=>{
-      const ids=(d.genres||[]).slice(0,2).map(g=>g.id).join(',');
-      const r=await tmdb('/discover/'+type,{...(ids?{with_genres:ids}:{}),sort_by:'popularity.desc','vote_count.gte':movie?250:100,'vote_average.gte':6.3,page:p});
-      return{items:lst(r,type),more:p<Math.min(8,r.total_pages)};
-    },
+    genre:p=>dsc(p,{...(g2?{with_genres:g2}:{}),sort_by:'popularity.desc','vote_count.gte':vc.a,'vote_average.gte':6.3}),
+    themes:p=>dsc(p,{with_keywords:kws,sort_by:'popularity.desc','vote_count.gte':100,'vote_average.gte':6}),
+    studio:p=>dsc(p,{[movie?'with_companies':'with_networks']:co&&co.id,sort_by:'popularity.desc','vote_count.gte':60}),
+    era:p=>dsc(p,{...(g1?{with_genres:g1}:{}),sort_by:'vote_average.desc','vote_count.gte':vc.a+100,[dk+'.gte']:(year-5)+'-01-01',[dk+'.lte']:(year+5)+'-12-31'}),
+    fresh:p=>dsc(p,{...(g2?{with_genres:g2}:{}),sort_by:'popularity.desc','vote_count.gte':50,[dk+'.gte']:(new Date().getFullYear()-3)+'-01-01'}),
+    top:p=>dsc(p,{...(g2?{with_genres:g2}:{}),sort_by:'vote_average.desc','vote_count.gte':vc.b}),
+    gems:p=>dsc(p,{...(g2?{with_genres:g2}:{}),sort_by:'vote_average.desc','vote_average.gte':7,'vote_count.gte':100,'vote_count.lte':vc.b}),
+    lang:p=>dsc(p,{with_original_language:d.original_language,sort_by:'vote_average.desc','vote_count.gte':150}),
     crew:async p=>{
       if(!pool){
         const rs=await Promise.all(peopleIds.map(id=>tmdb(`/person/${id}/combined_credits`).catch(()=>({cast:[],crew:[]}))));
@@ -175,7 +193,7 @@ function mlStart(mode){
   ML.kill=infinite(sent,async()=>{
     page++;const r=await src[mode](page),items=fresh(r.items);
     if(items.length)wall.push(items);
-    else if(page===1&&!r.more)wallEl.innerHTML=`<div class="empty"><b>Nothing found</b><p>Try another tab.</p></div>`;
+    else if(page===1&&!r.more)wallEl.innerHTML=`<div class="empty"><b>Nothing found</b><p>Try another selector.</p></div>`;
     return r.more;
   });
 }

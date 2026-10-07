@@ -6,7 +6,7 @@ const RL={items:[],i:-1,tp:null,busy:false,io:null,muted:true,act:0,last:0,tm:0}
 const LITE={};
 const lite=it=>LITE[it.key]||(LITE[it.key]=tmdb(`/${it.type}/${it.id}`,{append_to_response:'images,videos',include_image_language:'en,null'}).then(d=>{
   const logo=(d.images&&d.images.logos||[]).filter(l=>l.iso_639_1==='en'||!l.iso_639_1).sort((a,b)=>b.vote_average-a.vote_average)[0];
-  return{logo:logo&&logo.file_path,vids:ytIds(d.videos&&d.videos.results),genres:(d.genres||[]).map(g=>g.name),run:d.runtime||(d.episode_run_time&&d.episode_run_time[0])||0,seasons:d.number_of_seasons||0,vote:d.vote_average}
+  return{ov:d.overview||'',logo:logo&&logo.file_path,vids:ytIds(d.videos&&d.videos.results),genres:(d.genres||[]).map(g=>g.name),run:d.runtime||(d.episode_run_time&&d.episode_run_time[0])||0,seasons:d.number_of_seasons||0,vote:d.vote_average}
 }).catch(()=>({logo:null,vids:[],genres:[]})));
 function rcard(it,i){
   const loved=!!U.love[it.key],saved=inWL(it.key);

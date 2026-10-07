@@ -105,3 +105,7 @@
 .lstat{padding:14px var(--pad) 0;color:var(--ink3);font-size:14px}
 .lstat b{color:var(--ink);font-weight:600}
 
+
+.tag.rk{background:#fff;color:#000;border-radius:7px;padding:5px 8px;font-weight:800}
+
+.sechead{padding:24px var(--pad) 0;font:700 22px var(--sans);letter-spacing:-.025em}

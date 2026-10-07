@@ -1,4 +1,8 @@
 'use strict';
+/* =====================================================================
+   HOME — hero + a mood pill + a self-composing stack of modules
+   (the composer lives in layouts.js)
+   ===================================================================== */
 /* ---------- continue watching (logos, not words) ---------- */
 function wide(it,info,d=0){
   const pct=info.total?Math.round(info.done/info.total*100):0;
@@ -19,21 +23,75 @@ async function contInfo(limit=12){
 async function refreshCont(){
   const box=$('#contBox');if(!box)return;
   const c=await contInfo();
-  box.innerHTML=c.length?`<section class="sec"><div class="sh"><div><h2>Continue Watching</h2></div></div><div class="rw"><div class="rail">${c.map((x,i)=>wide(x.it,x.info,i)).join('')}</div></div></section>`:'';
+  box.innerHTML=c.length?`<section class="sec"><div class="sh"><h2>Continue</h2></div><div class="rw"><div class="rail">${c.map((x,i)=>wide(x.it,x.info,i)).join('')}</div></div></section>`:'';
   lazy();$$('#contBox .meta').forEach(logoInto);
 }
 
-/* =====================================================================
-   HOME — Apple TV shelves
-   ===================================================================== */
+/* ---------- classic shelf (used for the shelves built from YOUR list) ---------- */
 const HERO={i:0,items:[]};
-const FEEDS=[['you','Top Picks For You'],['trend','Trending Now'],['new','New This Week'],['gems','Hidden Gems'],['quick','Quick Watches'],['soon','Coming Soon'],['anime','Anime Spotlight']];
-const SHELF={you:['Made for you',''],trend:['Everyone’s watching',''],new:['Just landed',''],gems:['Loved, rarely talked about','High ratings, small crowds.'],quick:['Under 2 hours','Great films that respect your evening.'],soon:['In theaters & streaming',''],anime:['Subbed & dubbed','']};
-const skelTiles=n=>Array.from({length:n},()=>`<div class="tile sk" style="aspect-ratio:2/3;animation:sk 1.4s linear infinite"></div>`).join('');
-function shelfHTML(id,title,eyebrow,sub,body,more=true){
-  return `<section class="sec" id="sh-${id}"><div class="sh"><div>${eyebrow?`<small>${eyebrow}</small>`:''}${more?`<a class="more" href="#/feed/${id}"><h2>${title}${ic('chev')}</h2></a>`:`<h2>${title}</h2>`}<p id="sub-${id}">${sub||''}</p></div></div>
-  <div class="rw"><button class="ra l" data-rs="-1" aria-label="Scroll left">${ic('back')}</button><div class="rail" id="r-${id}">${body}</div><button class="ra r" data-rs="1" aria-label="Scroll right">${ic('chev')}</button></div></section>`;
+const skelTiles=n=>Array.from({length:n},()=>`<div class="tile sk" style="aspect-ratio:2/3"></div>`).join('');
+const fid=id=>encodeURIComponent(id);
+function shelfHTML(id,title,body){
+  return `<section class="sec" id="sh-${id.replace(/\W/g,'_')}" data-feed="${esc(id)}"><div class="sh"><a class="more" href="#/feed/${fid(id)}"><h2>${title}${ic('chev')}</h2></a></div>
+  <div class="rw"><button class="ra l" data-rs="-1" aria-label="Scroll left">${ic('back')}</button><div class="rail" data-rail>${body}</div><button class="ra r" data-rs="1" aria-label="Scroll right">${ic('chev')}</button></div></section>`;
 }
+async function fillShelf(id){
+  const sec=document.querySelector(`[data-feed="${CSS.escape(id)}"]`);if(!sec)return;
+  const box=sec.querySelector('[data-rail]');
+  try{
+    const r=await feedFn(id)(1,'all'),items=r.items.slice(0,18);
+    if(!items.length){sec.remove();return}
+    box.innerHTML=items.map((it,i)=>tile(it,{d:Math.min(i,8)})).join('');lazy();
+  }catch{sec.remove()}
+}
+
+/* ---------- shelves built from YOUR list ---------- */
+function personalSeeds(){
+  const recent=(o,n)=>Object.keys(o).filter(k=>META[k]).sort((a,b)=>o[b]-o[a]).slice(0,n);
+  const lastEp=k=>Math.max(0,...Object.values(U.eps[k]||{}));
+  return [...new Set([...recent(U.love,2),...recent(U.wl,3),...recent(U.seen,2),...Object.keys(U.eps).filter(k=>epCount(k)&&META[k]).sort((a,b)=>lastEp(b)-lastEp(a)).slice(0,2)])].slice(0,4);
+}
+function renderPersonal(){
+  const box=$('#persBox');if(!box)return;
+  let html='';
+  personalSeeds().slice(0,3).forEach(k=>{const m=META[k],verb=U.love[k]?'loved':U.wl[k]?'saved':'watched';
+    html+=shelfHTML('bc:'+k,`Because you ${verb} ${esc(m.title)}`,skelTiles(8))});
+  topGenres(2).forEach(g=>{if(GN[g])html+=shelfHTML('g:'+g,`More ${GN[g]}`,skelTiles(8))});
+  box.innerHTML=html;
+  $$('#persBox [data-feed]').forEach(s=>fillShelf(s.dataset.feed));
+}
+
+/* ---------- lists (Trakt popular lists when connected, curated otherwise) ---------- */
+const listCover=(href_,name,i)=>`<a class="cover lc" href="${href_}" style="--d:${i}"><div class="cm3"><i></i><i></i><i></i></div><b>${esc(name)}</b></a>`;
+async function renderLists(){
+  const box=$('#r-lists');if(!box)return;
+  if(CFG.traktId){
+    try{
+      const L=(await T.pub('/lists/popular?limit=14')).map(x=>x.list).filter(l=>l.item_count>=6).slice(0,10);
+      if(L.length){
+        box.innerHTML=L.map((l,i)=>listCover(`#/feed/${fid('trakt:'+l.ids.trakt)}`,l.name,i)).join('');
+        L.forEach(async(l,i)=>{try{
+          const its=await T.pub(`/lists/${l.ids.trakt}/items/movie,show?limit=3`),st=its.map(x=>x.movie?['movie',x.movie.ids.tmdb]:['tv',x.show.ids.tmdb]).filter(x=>x[1]);
+          const ds=await Promise.all(st.map(([t,id])=>tmdb(`/${t}/${id}`).catch(()=>null)));
+          const cm=box.children[i]&&box.children[i].querySelector('.cm3');
+          if(cm)cm.innerHTML=ds.filter(d=>d&&d.poster_path).map(d=>`<img src="${img(d.poster_path,'w185')}" alt="" onload="this.classList.add('ld')">`).join('')}catch{}});
+        return;
+      }
+    }catch{}
+  }
+  box.innerHTML=COLLS.slice(0,10).map((c,i)=>coverHTML(c,i)).join('');fillCovers(COLLS.slice(0,10));
+}
+const coverHTML=(c,i,pre='hv')=>`<a class="cover" href="#/explore?c=${c.id}" style="--d:${i}"><img alt="" draggable="false" id="${pre}-${c.id}"><b>${esc(c.n)}</b></a>`;
+function fillCovers(list,pre='hv'){
+  const io=new IntersectionObserver(es=>es.forEach(async e=>{
+    if(!e.isIntersecting)return;io.unobserve(e.target);
+    const c=list.find(x=>pre+'-'+x.id===e.target.id);if(!c)return;
+    try{const r=await collQuery(c),x=(r.results||[]).find(z=>z.backdrop_path);if(x){e.target.src=img(x.backdrop_path,'w780');e.target.onload=()=>e.target.classList.add('ld')}}catch{}
+  }),{rootMargin:'500px'});
+  list.forEach(c=>{const el=document.getElementById(pre+'-'+c.id);if(el)io.observe(el)});
+}
+
+/* ---------- page ---------- */
 async function renderHome(){
   const v=$('#v-home');
   v.innerHTML=`<div class="hero sk"></div>`;
@@ -44,35 +102,13 @@ async function renderHome(){
   HERO.items=heroItems.map((it,k)=>{const x=det[k]||{};const logo=(x.images&&x.images.logos||[]).filter(l=>l.iso_639_1==='en'||!l.iso_639_1).sort((a,b)=>b.vote_average-a.vote_average)[0];
     return{...it,logo:logo&&logo.file_path,genres:(x.genres||[]).slice(0,2).map(g=>g.name),run:x.runtime||(x.episode_run_time&&x.episode_run_time[0])||0,seasons:x.number_of_seasons||0,tr:ytIds(x.videos&&x.videos.results)}});
   HERO.i=0;
-  const sh=id=>{const f=FEEDS.find(x=>x[0]===id);return shelfHTML(id,f[1],SHELF[id][0],SHELF[id][1],skelTiles(8))};
   v.innerHTML=`<div class="hero" id="hero">${HERO.items.map(heroSlide).join('')}<div class="hero-nav" id="heroNav">${HERO.items.map((_,i)=>`<i data-i="${i}"><b></b></i>`).join('')}</div></div>
-    <div id="contBox"></div><div id="quizBox"></div>
-    ${sh('you')}${sh('trend')}
-    ${shelfHTML('top10','Top 10 Today','Right now','',skelTiles(6),false)}
-    ${sh('new')}
-    <section class="sec"><div class="sh"><div><small>Curated</small><a class="more" href="#/explore"><h2>Collections${ic('chev')}</h2></a></div></div><div class="rw"><div class="rail" id="r-colls">${COLLS.slice(0,8).map((c,i)=>coverHTML(c,i)).join('')}</div></div></section>
-    ${sh('gems')}${sh('quick')}${sh('soon')}${sh('anime')}`;
+    <div class="moodbar" id="moodBar"><button class="mood-pill" id="moodPill" aria-label="Pick a mood">${ic('spark')}<span id="moodLbl"></span>${ic('chev')}</button>
+      <div class="mood-chips" id="moodChips"><button data-mood="auto">Auto</button>${MOODS.map(m=>`<button data-mood="${m.id}">${m.n}</button>`).join('')}</div></div>
+    <div id="contBox"></div><div id="quizBox"></div><div id="mods"></div><div style="height:30px"></div>`;
   initHero();refreshCont();hideBoot();
   if(needQuiz())showQuiz();
-  FEEDS.forEach(([id])=>fillShelf(id));
-  fillTop10();fillCovers(COLLS.slice(0,8));
-}
-async function fillShelf(id){
-  try{
-    const r=await FP[id](1,'all'),box=$('#r-'+id);if(!box)return;
-    const items=r.items.slice(0,id==='you'?20:18);
-    if(!items.length){$('#sh-'+id).remove();return}
-    box.innerHTML=items.map((it,i)=>tile(it,{d:Math.min(i,8),date:id==='soon'})).join('');lazy();
-    if(id==='you'){const p=$('#sub-you');if(p)p.innerHTML=whyLine()}
-  }catch{const s=$('#sh-'+id);if(s)s.remove()}
-}
-async function fillTop10(){
-  try{const r=await tmdb('/trending/all/day'),box=$('#r-top10');if(!box)return;
-    box.innerHTML=lst(r).slice(0,10).map((it,i)=>`<div class="t10"><span class="n">${i+1}</span>${tile(it,{d:i})}</div>`).join('');lazy()}catch{}
-}
-const coverHTML=(c,i)=>`<a class="cover" href="#/explore?c=${c.id}" style="--d:${i}"><img alt="" draggable="false" id="cv-${c.id}"><b>${esc(c.n)}</b></a>`;
-function fillCovers(list){
-  list.forEach(async c=>{try{const r=await collQuery(c),x=(r.results||[]).find(z=>z.backdrop_path),el=$('#cv-'+c.id);if(x&&el){el.src=img(x.backdrop_path,'w780');el.onload=()=>el.classList.add('ld')}}catch{}});
+  renderMods(false);
 }
 function heroSlide(it,i){
   const meta=[...it.genres,it.year,it.run?fmtRun(it.run):(it.seasons?`${it.seasons} season${it.seasons>1?'s':''}`:'')].filter(Boolean);
@@ -107,23 +143,25 @@ function initHero(){
 }
 document.addEventListener('visibilitychange',()=>{const h=$('#hero');if(h)h.classList.toggle('paused',document.hidden)});
 
-/* full feed page (See all) — infinite wall, All / Films / Series */
+/* ---------- full feed page (See all) ---------- */
 const FD={id:'you',ty:'all',kill:()=>{}};
 function renderFeed(id){
   FD.kill();FD.id=id;
-  const f=FEEDS.find(x=>x[0]===id)||FEEDS[0],root=$('#v-feed');
-  root.innerHTML=`<a class="back" href="#/">${ic('back')}Home</a><div class="feedhead"><h1 class="h1">${esc(f[1])}</h1></div>
-    <div class="seg">${[['all','All'],['movie','Films'],['tv','Series']].map(([k,n])=>`<button class="${FD.ty===k?'on':''}" data-ty="${k}">${n}</button>`).join('')}</div>
-    <div class="sub" id="fSub"></div><div id="fWall"></div><div class="sentinel" id="fSent"></div>`;
-  const wall=new Wall($('#fWall'));let page=0;
+  const f=feedMeta(id),root=$('#v-feed'),ranked=id==='top250'||id.startsWith('trakt:'),plain=id.startsWith('trakt:')||id.startsWith('p:');
+  root.innerHTML=`<a class="back" href="#/">${ic('back')}</a><div class="feedhead"><h1 class="h1" id="fTitle">${esc(f.t)}</h1></div><p class="fdesc" id="fDesc"></p>
+    ${plain?'':`<div class="seg">${[['all','All'],['movie','Films'],['tv','Series']].map(([k,n])=>`<button class="${FD.ty===k?'on':''}" data-ty="${k}">${n}</button>`).join('')}</div>`}
+    <div id="fWall"></div><div class="sentinel" id="fSent"></div>`;
+  const wall=new Wall($('#fWall'));let page=0,count=0;const fn=feedFn(id);
   FD.kill=infinite($('#fSent'),async()=>{
-    page++;const r=await FP[id](page,FD.ty);
-    if(id==='you'&&page===1)$('#fSub').innerHTML=whyLine();
+    page++;const r=await fn(page,FD.ty);
+    if(r.title&&$('#fTitle'))$('#fTitle').textContent=r.title;
+    if(r.desc&&$('#fDesc'))$('#fDesc').textContent=r.desc.replace(/<[^>]+>/g,'').slice(0,240);
     if(!r.items.length&&page===1){$('#fWall').innerHTML=`<div class="empty"><b>Nothing here yet</b><p>Try another filter.</p></div>`;return false}
-    wall.push(r.items,{date:id==='soon'});return r.more;
+    wall.push(r.items,{date:id==='soon',rank:ranked?count:-1});count+=r.items.length;return r.more;
   });
 }
-/* taste starter */
+
+/* ---------- taste starter ---------- */
 const sigCount=()=>Object.keys(U.seen).length+Object.keys(U.love).length+Object.keys(U.rate).length+Object.keys(U.wl).length+Object.keys(U.eps).length;
 const needQuiz=()=>sigCount()<3&&!LS.get('lumen.quiz',0);
 async function showQuiz(){
@@ -132,8 +170,8 @@ async function showQuiz(){
     const [a,b]=await Promise.all([tmdb('/trending/movie/week'),tmdb('/movie/top_rated')]);
     const seen=new Set(),items=lst({results:[...b.results.slice(0,8),...a.results.slice(0,8),...b.results.slice(8,14)]},'movie').filter(i=>!seen.has(i.key)&&seen.add(i.key)).slice(0,16);
     if(!box||!box.isConnected)return;
-    box.innerHTML=`<div class="quiz"><h3>What do you love?</h3><p>Tap a few. Your picks tune themselves.</p><div class="qrail">${items.map(it=>`<button class="qp" data-q="${it.key}" aria-label="${esc(it.title)}"><img src="${img(it.pp,'w185')}" alt="" loading="lazy"><span class="hrt">${ic('heart')}</span></button>`).join('')}</div>
-      <div class="qfoot"><span id="qn">0 picked</span><button class="btn pri sm" id="qdone" disabled>Done</button></div></div>`;
+    box.innerHTML=`<div class="quiz"><h3>What do you love?</h3><div class="qrail">${items.map(it=>`<button class="qp" data-q="${it.key}" aria-label="${esc(it.title)}"><img src="${img(it.pp,'w185')}" alt="" loading="lazy"><span class="hrt">${ic('heart')}</span></button>`).join('')}</div>
+      <div class="qfoot"><span id="qn">Tap a few</span><button class="btn pri sm" id="qdone" disabled>Done</button></div></div>`;
     lazy();
   }catch{}
 }
@@ -141,11 +179,10 @@ function quizToggle(btn){
   const k=btn.dataset.q;
   if(U.love[k]){delete U.love[k];learn(k,-2);btn.classList.remove('on')}else{U.love[k]=Date.now();learn(k,2);btn.classList.add('on');vib(10)}
   saveU();
-  const n=$$('.qp.on').length;$('#qn').textContent=n+' picked';$('#qdone').disabled=n<3;
+  const n=$$('.qp.on').length;$('#qn').textContent=n?n+' picked':'Tap a few';$('#qdone').disabled=n<3;
 }
 function quizDone(){
   LS.set('lumen.quiz',1);saveU();resetEngine();
-  $('#quizBox').innerHTML='';toast('Picks tuned to you','spark');
-  const r=$('#r-you');if(r){r.innerHTML=skelTiles(8);fillShelf('you')}
+  $('#quizBox').innerHTML='';toast('Tuned to you','spark');
+  renderMods(true);
 }
-

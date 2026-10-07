@@ -30,6 +30,7 @@ function syncUI(){
 function tile(it,o={}){
   const bd=o.kind==='bd'&&it.bd,src=bd?img(it.bd,'w500'):img(it.pp,'w342');
   let tag='';if(o.date&&it.date){const d=new Date(it.date+'T12:00:00');tag=`<span class="tag">${d.toLocaleString('en-US',{month:'short'})} ${d.getDate()}</span>`}
+  if(o.rank)tag=`<span class="tag rk">${o.rank}</span>`;
   return `<a class="tile ${bd?'bdk':''}" href="${href(it)}" data-key="${it.key}" style="aspect-ratio:${bd?'16/9':'2/3'};--d:${o.d||0}" aria-label="${esc(it.title)}">${src?`<img src="${src}" alt="" loading="lazy" decoding="async" draggable="false">`:`<span class="nop">${esc(it.title)}</span>`}<span class="ov"></span><span class="tt">${esc(it.title)}<small>${it.year||''}</small></span>${tag}${qaBtn(it.key)}</a>`;
 }
 async function logoInto(el){
@@ -61,7 +62,7 @@ class Wall{
     });
   }
   push(items,o={}){
-    const base=this.list.length,es=items.map((it,i)=>({it,kind:it.bd&&(base+i)%6===4?'bd':'po',date:o.date,d:Math.min(i,10)}));
+    const base=this.list.length,es=items.map((it,i)=>({it,kind:it.bd&&(base+i)%6===4?'bd':'po',date:o.date,d:Math.min(i,10),rank:(o.rank!=null&&o.rank>=0)?o.rank+i+1:0}));
     this.list.push(...es);this.place(es,true);lazy();
   }
   clear(){this.list=[];this.build()}

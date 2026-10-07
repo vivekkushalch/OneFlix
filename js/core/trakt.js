@@ -11,6 +11,10 @@ const T={
     if(!r.ok)throw new Error('Trakt '+r.status);
     return r.status===204?null:r.json();
   },
+  async pub(path){
+    const r=await fetch(TK+path,{headers:{'Content-Type':'application/json','trakt-api-version':'2','trakt-api-key':CFG.traktId}});
+    if(!r.ok)throw new Error('Trakt '+r.status);return r.json();
+  },
   async refresh(t){
     const r=await fetch(TK+'/oauth/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:t.refresh_token,client_id:CFG.traktId,client_secret:CFG.traktSecret,redirect_uri:'urn:ietf:wg:oauth:2.0:oob',grant_type:'refresh_token'})});
     if(!r.ok){LS.del('lumen.trakt');throw new Error('Trakt session expired — reconnect')}

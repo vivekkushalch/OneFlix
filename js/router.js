@@ -20,7 +20,7 @@ function route(force){
   closeDetail();
   let tab=path.split('/')[1]||'home';
   if(tab==='movies'||tab==='series'){FD.ty=tab==='movies'?'movie':'tv';location.replace('#/feed/trend');return}
-  showTab(TABS.includes(tab)?tab:'home',force===true,params,path.split('/')[2]);
+  showTab(TABS.includes(tab)?tab:'home',force===true,params,decodeURIComponent(path.split('/')[2]||''));
 }
 function showTab(tab,force,params,arg){
   const sig=tab==='explore'&&params?(params.get('q')||'')+'|'+(params.get('c')||''):tab==='feed'?(arg||'you')+'|'+FD.ty:'';
@@ -30,6 +30,7 @@ function showTab(tab,force,params,arg){
   document.body.classList.toggle('reelmode',tab==='discover');
   $$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+tab));
   $$('[data-tab]').forEach(a=>{const on=a.dataset.tab===(tab==='feed'?'home':tab);a.classList.toggle('on',on);const s=a.querySelector('[data-ic]');if(s&&a.closest('#dock'))s.innerHTML=ic(s.dataset.ic,on?'solid':'')});
+  if(tab==='home'&&window.PERS_DIRTY&&$('#persBox')){window.PERS_DIRTY=false;renderPersonal()}
   if(!changed){if(tab==='discover')reelResume();return}
   const v=$('#v-'+tab);
   if(tab==='home'){if(force||!v.firstChild||v.querySelector('.gate'))renderHome()}

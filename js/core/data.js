@@ -41,7 +41,7 @@ const epsOf=k=>U.eps[k]||(U.eps[k]={});
 const epCount=k=>Object.keys(U.eps[k]||{}).filter(x=>!x.startsWith('0-')).length;
 
 /* ---------- taste profile: every action nudges genre weights ---------- */
-function learn(key,w){const m=META[key];if(!m||!m.g||!m.g.length)return;m.g.forEach(g=>{U.prof[g]=clamp((U.prof[g]||0)+w,-6,12)})}
+function learn(key,w){if(typeof ENG!=='undefined')ENG.dirty=true;window.PERS_DIRTY=true;const m=META[key];if(!m||!m.g||!m.g.length)return;m.g.forEach(g=>{U.prof[g]=clamp((U.prof[g]||0)+w,-6,12)})}
 const affinity=it=>{const g=it.g&&it.g.length?it.g:((META[it.key]||{}).g||[]);return g.length?g.reduce((s,x)=>s+(U.prof[x]||0),0)/g.length:0};
 const topGenres=n=>Object.entries(U.prof).filter(([,w])=>w>0).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([g])=>+g);
 const logoMemo={};
