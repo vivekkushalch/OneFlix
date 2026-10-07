@@ -42,10 +42,12 @@
 </main>
 
 <nav class="dock" id="dock" aria-label="Primary">
-  <a href="#/" data-tab="home" aria-label="Home"><span data-ic="home"></span><b>Home</b></a>
-  <a href="#/discover" data-tab="discover" aria-label="Discover"><span data-ic="reel"></span><b>Discover</b></a>
-  <a href="#/explore" data-tab="explore" aria-label="Search"><span data-ic="search"></span><b>Search</b></a>
-  <a href="#/library" data-tab="library" aria-label="My List"><span data-ic="list"></span><b>My List</b></a>
+  <div class="dock-pill">
+    <a href="#/" data-tab="home" aria-label="Home"><span data-ic="home"></span><b>Home</b></a>
+    <a href="#/discover" data-tab="discover" aria-label="Discover"><span data-ic="reel"></span><b>Discover</b></a>
+    <a href="#/library" data-tab="library" aria-label="My List"><span data-ic="list"></span><b>My List</b></a>
+  </div>
+  <a class="dock-search" href="#/explore" data-tab="explore" aria-label="Search"><span data-ic="search"></span></a>
 </nav>
 
 <div class="detail" id="detail" aria-hidden="true"></div>

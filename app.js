@@ -759,7 +759,7 @@ function route(force){
 function showTab(tab,force,params,arg){
   const sig=tab==='explore'&&params?(params.get('q')||'')+'|'+(params.get('c')||''):tab==='feed'?(arg||'you')+'|'+FD.ty:'';
   const changed=tab!==TAB||!$('#v-'+tab).classList.contains('on')||force||(tab==='explore'&&sig!==EXSIG)||(tab==='feed'&&sig!==EXSIG);
-  const leaving=TAB;TAB=tab;
+  const leaving=TAB;TAB=tab;$('#dock').classList.remove('mini');lastY=0;
   if(leaving==='discover'&&tab!=='discover')reelStop();
   document.body.classList.toggle('reelmode',tab==='discover');
   $$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+tab));
@@ -858,7 +858,15 @@ document.addEventListener('keydown',e=>{
     else if(e.key==='l'&&RL.items[RL.i])reelLove(RL.items[RL.i].key,$(`#reel .rc.on`));
   }
 });
-addEventListener('scroll',()=>{$('#nav').classList.toggle('solid',scrollY>30)},{passive:true});
+let lastY=0,dockT=0;
+addEventListener('scroll',()=>{
+  const y=scrollY;$('#nav').classList.toggle('solid',y>30);
+  if(dockT)return;dockT=requestAnimationFrame(()=>{
+    dockT=0;const d=y-lastY,dk=$('#dock');
+    if(y<24||d<-8)dk.classList.remove('mini');else if(d>8&&y>90)dk.classList.add('mini');
+    if(Math.abs(d)>8)lastY=y;
+  });
+},{passive:true});
 
 function boot(){
   $$('#links [data-ic],#dock [data-ic]').forEach(s=>s.innerHTML=ic(s.dataset.ic));
