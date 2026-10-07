@@ -218,7 +218,7 @@ async function renderHome(){
     ${sh('new')}
     <section class="sec"><div class="sh"><div><small>Curated</small><a class="more" href="#/explore"><h2>Collections${ic('chev')}</h2></a></div></div><div class="rw"><div class="rail" id="r-colls">${COLLS.slice(0,8).map((c,i)=>coverHTML(c,i)).join('')}</div></div></section>
     ${sh('gems')}${sh('quick')}${sh('soon')}${sh('anime')}`;
-  initHero();refreshCont();
+  initHero();refreshCont();hideBoot();
   if(needQuiz())showQuiz();
   FEEDS.forEach(([id])=>fillShelf(id));
   fillTop10();fillCovers(COLLS.slice(0,8));
@@ -868,7 +868,12 @@ addEventListener('scroll',()=>{
   });
 },{passive:true});
 
+function hideBoot(){const b=$('#boot');if(!b)return;b.classList.add('gone');setTimeout(()=>b.remove(),700)}
 function boot(){
+  if(standalone())document.body.classList.add('standalone');
+  addEventListener('offline',()=>toast('You’re offline — showing saved content','clock'));
+  addEventListener('online',()=>toast('Back online','check'));
+  setTimeout(hideBoot,2200);
   $$('#links [data-ic],#dock [data-ic]').forEach(s=>s.innerHTML=ic(s.dataset.ic));
   paintAvatar();
   route(true);

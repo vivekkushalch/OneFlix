@@ -50,3 +50,20 @@ function renderGate(){
   $('#gGo').onclick=go;$('#gKey').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
 }
 
+
+/* ---------- install banner ---------- */
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function maybeInstallBanner(){
+  if(standalone()||$('#instBar')||(LS.get('lumen.inst',0)>Date.now())||!CFG.tmdb)return;
+  if(!DIP&&!isIOS)return;
+  const b=document.createElement('div');b.id='instBar';b.className='instbar';
+  b.innerHTML=`<img src="icons/icon-192.png" alt=""><div><b>Install Lumen</b><small>Full screen and offline</small></div><button class="btn pri sm" id="instGo">${DIP?'Install':'How'}</button><button class="ib" id="instX" aria-label="Dismiss">${ic('x')}</button>`;
+  document.body.appendChild(b);
+  $('#instX').onclick=()=>{LS.set('lumen.inst',Date.now()+14*864e5);b.classList.add('out');setTimeout(()=>b.remove(),400)};
+  $('#instGo').onclick=async()=>{
+    if(DIP){DIP.prompt();const r=await DIP.userChoice;DIP=null;b.remove();if(r.outcome==='dismissed')LS.set('lumen.inst',Date.now()+7*864e5)}
+    else openModal(`<div class="win"><div class="code"><small>Add to Home Screen</small><p style="margin:14px 0 6px;text-align:left"><b>1.</b> Tap the <b>Share</b> button in Safari<br><b>2.</b> Choose <b>Add to Home Screen</b><br><b>3.</b> Tap <b>Add</b></p><div class="row" style="justify-content:center"><button class="btn pri" data-closemodal>Got it</button></div></div></div>`);
+  };
+}
+addEventListener('beforeinstallprompt',()=>setTimeout(maybeInstallBanner,4000));
+if(isIOS)addEventListener('load',()=>setTimeout(maybeInstallBanner,9000));
