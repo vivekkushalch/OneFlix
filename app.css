@@ -495,3 +495,5 @@ body:not(.reelmode) .reel-hint{display:none}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 .tile.sk{animation:sk 1.4s linear infinite}
+
+body.nokey .dock,body.nokey .links,body.nokey .nav-r{display:none}

@@ -741,6 +741,7 @@ const TABS=['home','discover','explore','library','feed'];
 
 function route(force){
   NAV++;
+  document.body.classList.toggle('nokey',!CFG.tmdb);
   const raw=location.hash.slice(1)||'/',[path,qs]=raw.split('?'),params=new URLSearchParams(qs||'');
   const dm=path.match(/^\/(m|t)\/(\d+)/);
   if(!CFG.tmdb){closeDetail();TABS.forEach(t=>$('#v-'+t).classList.toggle('on',t==='home'));TAB='home';renderGate();return}
