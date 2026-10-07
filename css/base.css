@@ -1,0 +1,40 @@
+/* =====================================================
+   LUMEN — Apple TV language
+   SF-style type (Inter, optical sizing), glass materials,
+   poster shelves, poster-tinted pages. Spring motion.
+   ===================================================== */
+:root{
+  --bg:#0b0b0d;--bg2:#161619;--bg3:#202024;
+  --tint:11 11 13;
+  --ink:#fff;--ink2:rgba(255,255,255,.76);--ink3:rgba(255,255,255,.5);--ink4:rgba(255,255,255,.3);--line:rgba(255,255,255,.12);
+  --glass:rgba(64,64,72,.46);--glass2:rgba(255,255,255,.14);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter",system-ui,"Segoe UI",Roboto,sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.34,1.5,.5,1);
+  --pad:16px;--nav:58px;--g:10px;--r:12px;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+@media(min-width:900px){:root{--pad:44px;--nav:68px;--g:14px;--r:14px}}
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg);overscroll-behavior-y:none}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--sans);font-optical-sizing:auto;font-feature-settings:"cv11","ss03";letter-spacing:-.01em;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+input,textarea{-webkit-user-select:text;user-select:text}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;letter-spacing:inherit}
+h1,h2,h3,p{margin:0}
+img{display:block;max-width:100%;-webkit-user-drag:none}
+svg{display:block}
+::selection{background:rgba(255,255,255,.3)}
+:focus-visible{outline:2px solid #0a84ff;outline-offset:2px;border-radius:8px}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body.lock,body.reelmode{overflow:hidden}
+.ic{width:22px;height:22px;fill:currentColor;flex:none}
+.ic.pop{animation:pop .5s var(--spring)}
+@keyframes pop{0%{transform:scale(.4) rotate(-18deg)}100%{transform:none}}
+
+/* ---------- glass material ---------- */
+.glass,.btn,.ib,.qa,.ck,.badge,.tag,.rc-act>*,.hero-nav,.toast,.seg,.sbox,.seasons button,.rate button,.chip,.nextup .btn,.sheet,.cine-ui .ib{
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+}
+.btn,.ib,.qa,.ck,.badge,.rc-act>*,.seg,.sbox,.seasons button,.rate button,.chip,.cine-ui .ib{background:var(--glass);box-shadow:inset 0 .5px 0 rgba(255,255,255,.3),inset 0 0 0 .5px rgba(255,255,255,.14)}
+

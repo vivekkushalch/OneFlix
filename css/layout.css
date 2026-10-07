@@ -1,0 +1,23 @@
+/* ---------- views ---------- */
+.view{display:none;min-height:100svh;padding-bottom:calc(var(--sab) + 120px)}
+.view.on{display:block;animation:vin .55s var(--ease)}
+.view.pt{padding-top:calc(var(--nav) + var(--sat) + 6px)}
+@keyframes vin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sk{background:linear-gradient(100deg,#161619 30%,#232327 50%,#161619 70%);background-size:300% 100%;animation:sk 1.4s linear infinite}
+@keyframes sk{to{background-position:-300% 0}}
+.h1{font:700 clamp(30px,5vw,40px)/1.1 var(--sans);letter-spacing:-.03em;padding:6px var(--pad) 0}
+
+/* ---------- buttons ---------- */
+.btn{position:relative;height:50px;padding:0 26px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px/1 var(--sans);letter-spacing:-.015em;white-space:nowrap;color:#fff;transition:background .25s,color .25s,transform .45s var(--spring)}
+.btn:hover{background:rgba(110,110,120,.6)}
+.btn:active{transform:scale(.94)}
+.btn .ic{width:20px;height:20px}
+.btn.pri{background:#fff;color:#000;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.btn.pri:hover{background:rgba(255,255,255,.86)}
+.btn.on{background:#fff;color:#000;box-shadow:none}
+.btn.sm{height:36px;padding:0 16px;font-size:14px}
+.btn.sq{width:50px;padding:0}
+.btn.pulse::after,.qa.pulse::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 2px #fff;animation:ring .6s var(--ease) forwards;pointer-events:none}
+@keyframes ring{from{transform:scale(1);opacity:.9}to{transform:scale(1.7);opacity:0}}
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
